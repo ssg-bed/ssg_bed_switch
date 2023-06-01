@@ -1,38 +1,42 @@
 #include <string.h>
 #include "relay.h"
-#include "serial.h"
+#include <SoftwareSerial.h>
 
-Relay *relay;
-SerialHandler *serial_handler;
+Relay relay = Relay();
+SoftwareSerial mySerial(10, 11);
+int i;
+char buffer[1024];
 
 void setup() {
-  SoftwareSerialBuilder *builder;
-  SoftwareSerial *serial;
-
-  relay = new Relay();
-  relay->setSwitchPin(2);
-
-  builder = new SoftwareSerialBuilder();
-  builder->setRxPin(3);
-  builder->setTxPin(4);
-  builder->setBaudRate(9600);
-
-  serial = builder->buildAndListen();
-  serial_handler = new SerialHandler(serial);
-
-  free(builder);
+  relay.setSwitchPin(2);
 
   Serial.begin(9600);
+  mySerial.begin(9600);
+
+  mySerial.write("AT");
 }
 
 void loop() {
-  const char *data = serial_handler->receive();
-  if (strcmp(data, "INSLEEP=FALSE") == 0) {
-    relay->close();
+  if (Serial.available()) {
+    while (Serial.available()) {
+      mySerial.write(Serial.read());
+    }
+  }
+
+  delay(100);
+
+  for (i = 0; mySerial.available(); i++) {
+    buffer[i] = mySerial.read();
+    Serial.write(buffer[i]);
+  }
+  buffer[i] = '\0';
+
+  if (strcmp(buffer, "INSLEEP=FALSE") == 0) {
+    relay.close();
     Serial.println("[received] insleep: false");
   }
-  else if (strcmp(data, "INSLEEP=TRUE") == 1) {
-    relay->open();
+  else if (strcmp(buffer, "INSLEEP=TRUE") == 0) {
+    relay.open();
     Serial.println("[received] insleep: true");
   }
   delay(100);
