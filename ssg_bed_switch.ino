@@ -1,43 +1,41 @@
 #include <string.h>
+
+#include <Wire.h>
+#include <IRremote.h>
+
 #include "relay.h"
-#include <SoftwareSerial.h>
+
+#define PIN_RELAY 2
+#define WIRE_ADDR 8
 
 Relay relay = Relay();
-SoftwareSerial mySerial(10, 11);
-int i;
-char buffer[1024];
+char buffer[128];
 
 void setup() {
-  relay.setSwitchPin(2);
+  relay.setSwitchPin(PIN_RELAY);
 
+  Wire.begin(WIRE_ADDR);
+  Wire.onReceive(receiveEvent);
   Serial.begin(9600);
-  mySerial.begin(9600);
-
-  mySerial.write("AT");
 }
 
 void loop() {
-  if (Serial.available()) {
-    while (Serial.available()) {
-      mySerial.write(Serial.read());
-    }
-  }
-
   delay(100);
+}
 
-  for (i = 0; mySerial.available(); i++) {
-    buffer[i] = mySerial.read();
-    Serial.write(buffer[i]);
+void receiveEvent(int howMany) {
+  int i = 0;
+  while (Wire.available()) {
+    buffer[i++] = Wire.read();
   }
   buffer[i] = '\0';
 
+  Serial.println(buffer);
+
   if (strcmp(buffer, "INSLEEP=FALSE") == 0) {
-    relay.close();
-    Serial.println("[received] insleep: false");
+    relay.open(); // TURN LIGHT ON
   }
-  else if (strcmp(buffer, "INSLEEP=TRUE") == 0) {
-    relay.open();
-    Serial.println("[received] insleep: true");
+  if (strcmp(buffer, "INSLEEP=TRUE") == 0) {
+    relay.close(); // TURN LIGHT OFF
   }
-  delay(100);
 }
